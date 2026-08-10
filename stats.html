@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teapot Showdown — Stats</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --s-mouse: #c98500;
+      --s-holroyd: #199e70;
+      --s-spacemouse: #3987e5;
+      --s-rotatrix: #e66767;
+    }
+    body {
+      background: var(--page);
+      color: var(--ink-2);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 32px 24px 60px;
+    }
+    .wrap { max-width: 1060px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    header h1 { font-size: 22px; font-weight: 700; color: var(--ink); }
+    header a { color: var(--muted); font-size: 13px; text-decoration: none; }
+    header a:hover { color: var(--ink); }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .filters .group { display: flex; gap: 6px; align-items: center; }
+    .filters .group-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 5px 12px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: rgba(255, 255, 255, 0.3); }
+    .chip.active { background: rgba(255, 255, 255, 0.10); color: var(--ink); }
+    .chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    #player-filter {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 5px 12px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 600;
+      width: 110px;
+    }
+    #player-filter:focus { outline: none; border-color: rgba(255, 255, 255, 0.35); }
+
+    .footnote {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin: -10px 0 18px;
+      max-width: 720px;
+      line-height: 1.5;
+    }
+    .hidden { display: none !important; }
+
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .tile .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .tile .value { font-size: 26px; font-weight: 600; color: var(--ink); }
+    .tile .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 16px 10px;
+    }
+    .card.full { grid-column: 1 / -1; }
+    .card h2 { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+    .card .sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .card svg { display: block; width: 100%; height: auto; }
+    .card .empty {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding: 60px 0;
+    }
+    @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .toggles { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+    .metric-toggle, .stat-toggle { display: flex; gap: 6px; }
+
+    .avg-group { margin-bottom: 14px; }
+    .avg-group:last-child { margin-bottom: 4px; }
+    .avg-group-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .avg-row {
+      display: grid;
+      grid-template-columns: 190px 1fr 210px;
+      align-items: center;
+      gap: 12px;
+      padding: 3px 0;
+    }
+    .avg-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    .avg-label .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .avg-label .n { color: var(--muted); font-size: 11px; }
+    .avg-track { height: 18px; position: relative; }
+    .avg-bar {
+      height: 100%;
+      border-radius: 0 4px 4px 0; /* rounded data end, square at baseline */
+      min-width: 2px;
+    }
+    .avg-value {
+      font-size: 13px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .avg-value .avg-delta { color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .avg-value .avg-delta.fastest { color: #0ca30c; }
+    @media (max-width: 760px) {
+      .avg-row { grid-template-columns: 150px 1fr 170px; gap: 8px; }
+    }
+
+    .table-card { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--baseline);
+    }
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--grid);
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    td.num, th.num { text-align: right; }
+    tr:last-child td { border-bottom: none; }
+    td .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
+    tr.outlier-row td { opacity: 0.45; }
+    .out-badge {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+    .actions button {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 16px;
+      color: var(--ink-2);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .actions button:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.35); }
+    .actions button.danger-armed { color: #e66767; border-color: #e66767; }
+
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: #262624;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color: var(--ink-2);
+      z-index: 10;
+      display: none;
+      max-width: 240px;
+      line-height: 1.5;
+    }
+    #tooltip .t-title { color: var(--ink); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Teapot Showdown — Stats</h1>
+      <a href="./">&larr; back to game</a>
+    </header>
+
+    <div class="filters" id="filters">
+      <div class="group" id="filter-input">
+        <span class="group-label">Input</span>
+        <button class="chip active" data-input="all">All</button>
+        <button class="chip" data-input="mouse"><span class="dot" style="background:var(--s-mouse)"></span>Mouse</button>
+        <button class="chip" data-input="mouse-holroyd"><span class="dot" style="background:var(--s-holroyd)"></span>Mouse&nbsp;(Virtual&nbsp;Trackball)</button>
+        <button class="chip" data-input="spacemouse"><span class="dot" style="background:var(--s-spacemouse)"></span>SpaceMouse</button>
+        <button class="chip" data-input="rotatrix"><span class="dot" style="background:var(--s-rotatrix)"></span>Rotatrix</button>
+      </div>
+      <div class="group" id="filter-mode">
+        <span class="group-label">Mode</span>
+        <button class="chip active" data-mode="all">All</button>
+        <button class="chip" data-mode="rot">Rotation only</button>
+        <button class="chip" data-mode="trans">Translation only</button>
+        <button class="chip" data-mode="6dof">Rotation + translation</button>
+      </div>
+      <div class="group" id="filter-tol">
+        <span class="group-label">Tolerance</span>
+        <button class="chip active" data-tol="all">All</button>
+        <button class="chip" data-tol="precise">Precise</button>
+        <button class="chip" data-tol="normal">Normal</button>
+        <button class="chip" data-tol="loose">Loose</button>
+      </div>
+      <div class="group" id="filter-player">
+        <span class="group-label">Player</span>
+        <input type="text" id="player-filter" placeholder="all" maxlength="8" />
+      </div>
+      <div class="group" id="filter-outliers">
+        <span class="group-label">Outliers</span>
+        <button class="chip" data-out="keep">Include</button>
+        <button class="chip active" data-out="drop">Exclude</button>
+      </div>
+    </div>
+    <div class="footnote" id="outlier-note">
+      Outlier rule: Tukey fences at 1.5&times;IQR on log time, computed separately for
+      per-session median motion times and individual motion times within each
+      input &times; mode group (needs &ge;5 samples per group). Excluded points are hidden from charts but remain in the
+      sessions table, badged.
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <div>
+            <h2 id="avg-title">Average session time by input (shorter is better)</h2>
+            <div class="sub" id="avg-sub">mean total time; % is relative to the fastest input within the same mode</div>
+          </div>
+          <div class="toggles">
+            <div class="metric-toggle">
+              <button class="chip" data-metric="session">Session total</button>
+              <button class="chip active" data-metric="motion">Motion time</button>
+            </div>
+            <div class="stat-toggle">
+              <button class="chip active" data-stat="mean">Mean</button>
+              <button class="chip" data-stat="median">Median</button>
+            </div>
+          </div>
+        </div>
+        <div id="chart-avg"></div>
+      </div>
+      <div class="card" id="card-learning-rot">
+        <h2>Motion time by attempt — rotation only</h2>
+        <div class="sub">median time per match per session, in order played — one line per input</div>
+        <div id="chart-learning-rot"></div>
+      </div>
+      <div class="card" id="card-learning-trans">
+        <h2>Motion time by attempt — translation only</h2>
+        <div class="sub">median time per match per session, in order played — one line per input</div>
+        <div id="chart-learning-trans"></div>
+      </div>
+      <div class="card" id="card-learning-6dof">
+        <h2>Motion time by attempt — rotation + translation</h2>
+        <div class="sub">median time per match per session, in order played — one line per input</div>
+        <div id="chart-learning-6dof"></div>
+      </div>
+      <div class="card" id="card-scatter-rot">
+        <h2>Motion time vs rotation</h2>
+        <div class="sub">modes with rotation; each dot is one match; x = rotation to cover</div>
+        <div id="chart-rot"></div>
+      </div>
+      <div class="card" id="card-scatter-trans">
+        <h2>Motion time vs translation</h2>
+        <div class="sub">modes with translation; each dot is one match; x = distance to cover</div>
+        <div id="chart-trans"></div>
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <h2>Sessions</h2>
+      <div class="sub" id="table-sub"></div>
+      <table id="sessions-table"></table>
+    </div>
+
+    <div class="actions">
+      <button id="btn-export">export JSON</button>
+      <button id="btn-import">import JSON</button>
+      <button id="btn-clear">clear all data</button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <script type="module">
+    import {
+      SESSIONS_KEY, rebuildLeaderboard, loadSessions, median, DEVICE,
+    } from "./lib/pose-match-shared.js";
+
+    // ── Data ────────────────────────────────────────────────────────────
+
+    const MODE_LABEL = { rot: "rotation", trans: "translation", "6dof": "6DoF", turntable: "turntable" };
+    const MODE_TITLE = {
+      rot: "Rotation only",
+      trans: "Translation only",
+      "6dof": "Rotation + translation",
+      turntable: "Turntable",
+    };
+    const HAS_TRANSLATION = new Set(["6dof", "trans"]);
+    const HAS_ROTATION = new Set(["6dof", "rot", "turntable"]);
+    const SURFACE = "#1a1a19";
+
+    function quatAngleDeg(q1, q2) {
+      const dot = Math.abs(q1[0] * q2[0] + q1[1] * q2[1] + q1[2] * q2[2] + q1[3] * q2[3]);
+      return 2 * Math.acos(Math.min(1, dot)) * 180 / Math.PI;
+    }
+
+    function vecDist(a, b) {
+      return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    }
+
+    // flatten motions with derived difficulty measures
+    function motionRows(sessions) {
+      const rows = [];
+      for (const s of sessions) {
+        (s.motions ?? []).forEach((m, i) => {
+          rows.push({
+            session: s,
+            poseIndex: i + 1,
+            timeS: m.ms / 1000,
+            angleDeg: quatAngleDeg(m.from.q, m.to.q),
+            dist: vecDist(m.from.t, m.to.t),
+          });
+        });
+      }
+      return rows;
+    }
+
+    // ── Formatting ──────────────────────────────────────────────────────
+
+    function fmtTotal(ms) {
+      const t = ms / 1000;
+      const m = Math.floor(t / 60);
+      const s = t - m * 60;
+      return m > 0 ? `${m}:${s.toFixed(1).padStart(4, "0")}` : `${s.toFixed(1)}s`;
+    }
+
+    function fmtDate(ts) {
+      return new Date(ts).toLocaleString(undefined, {
+        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+    }
+
+    // ── Outlier detection ───────────────────────────────────────────────
+    // Tukey fences on log-transformed times (timing data is right-skewed,
+    // so fences in log space = multiplicative fences in raw space).
+    // Returns null when the group is too small to judge.
+
+    function quantile(sorted, p) {
+      const idx = (sorted.length - 1) * p;
+      const lo = Math.floor(idx), hi = Math.ceil(idx);
+      return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+    }
+
+    function iqrFence(values) {
+      if (values.length < 5) return null;
+      const logs = values.map(Math.log).sort((a, b) => a - b);
+      const q1 = quantile(logs, 0.25);
+      const q3 = quantile(logs, 0.75);
+      const iqr = q3 - q1;
+      // epsilon guard: with iqr = 0 (identical values) the exp/log
+      // round-trip can land a hair below the value and flag everything
+      return { lo: Math.exp(q1 - 1.5 * iqr) * (1 - 1e-9), hi: Math.exp(q3 + 1.5 * iqr) * (1 + 1e-9) };
+    }
+
+    function flagOutliers(items, keyFn, valFn) {
+      const groups = {};
+      for (const it of items) (groups[keyFn(it)] ??= []).push(it);
+      for (const g of Object.values(groups)) {
+        const f = iqrFence(g.map(valFn));
+        if (!f) continue;
+        for (const it of g) {
+          const v = valFn(it);
+          if (v < f.lo || v > f.hi) it.outlier = true;
+        }
+      }
+    }
+
+    // ── Chart primitives (inline SVG, no library) ───────────────────────
+
+    const NS = "http://www.w3.org/2000/svg";
+
+    function el(tag, attrs, parent) {
+      const e = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      if (parent) parent.appendChild(e);
+      return e;
+    }
+
+    function niceTicks(min, max, count = 5) {
+      if (min === max) { min = 0; max = max || 1; }
+      const span = max - min;
+      const step0 = span / count;
+      const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+      const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= count) ?? mag * 10;
+      const lo = Math.floor(min / step) * step;
+      const hi = Math.ceil(max / step) * step;
+      const ticks = [];
+      for (let v = lo; v <= hi + step / 2; v += step) ticks.push(+v.toFixed(10));
+      return { lo, hi, ticks };
+    }
+
+    const tooltip = document.getElementById("tooltip");
+    function showTooltip(html, x, y) {
+      tooltip.innerHTML = html;
+      tooltip.style.display = "block";
+      const pad = 14;
+      const r = tooltip.getBoundingClientRect();
+      tooltip.style.left = Math.min(x + pad, innerWidth - r.width - 8) + "px";
+      tooltip.style.top = Math.min(y + pad, innerHeight - r.height - 8) + "px";
+    }
+    function hideTooltip() { tooltip.style.display = "none"; }
+
+    // least-squares fit; returns null when a line would be meaningless
+    function linearFit(pts) {
+      if (pts.length < 3) return null;
+      const n = pts.length;
+      let sx = 0, sy = 0, sxx = 0, sxy = 0;
+      for (const p of pts) { sx += p.x; sy += p.y; sxx += p.x * p.x; sxy += p.x * p.y; }
+      const denom = n * sxx - sx * sx;
+      if (Math.abs(denom) < 1e-9) return null;
+      const b = (n * sxy - sx * sy) / denom;
+      const a = (sy - b * sx) / n;
+      return { a, b };
+    }
+
+    // Generic dot/line chart. series: [{key, points:[{x, y, tip}]}], connect: bool.
+    // trend: true draws a per-series least-squares line and de-emphasizes dots.
+    function renderChart(container, { series, xLabel, yLabel, connect, xFmt, height = 260, trend = false }) {
+      container.innerHTML = "";
+      const all = series.flatMap((s) => s.points);
+      if (!all.length) {
+        container.innerHTML = '<div class="empty">no data for this filter yet</div>';
+        return;
+      }
+
+      const W = 560, H = height;
+      const M = { l: 48, r: 14, t: 10, b: 40 };
+      const xT = niceTicks(Math.min(0, ...all.map((p) => p.x)), Math.max(...all.map((p) => p.x)));
+      const yT = niceTicks(0, Math.max(...all.map((p) => p.y)));
+      const sx = (v) => M.l + (v - xT.lo) / (xT.hi - xT.lo) * (W - M.l - M.r);
+      const sy = (v) => H - M.b - (v - yT.lo) / (yT.hi - yT.lo) * (H - M.t - M.b);
+
+      const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, null);
+
+      // gridlines: solid hairlines, one step off surface
+      for (const t of yT.ticks) {
+        el("line", { x1: M.l, x2: W - M.r, y1: sy(t), y2: sy(t), stroke: "var(--grid)", "stroke-width": 1 }, svg);
+        el("text", {
+          x: M.l - 8, y: sy(t) + 3.5, fill: "var(--muted)", "font-size": 10.5,
+          "text-anchor": "end", "font-variant-numeric": "tabular-nums",
+        }, svg).textContent = String(t);
+      }
+      // baseline + x ticks
+      el("line", { x1: M.l, x2: W - M.r, y1: sy(yT.lo), y2: sy(yT.lo), stroke: "var(--baseline)", "stroke-width": 1 }, svg);
+      for (const t of xT.ticks) {
+        el("text", {
+          x: sx(t), y: H - M.b + 16, fill: "var(--muted)", "font-size": 10.5,
+          "text-anchor": "middle", "font-variant-numeric": "tabular-nums",
+        }, svg).textContent = xFmt ? xFmt(t) : String(t);
+      }
+      // axis titles
+      el("text", { x: (M.l + W - M.r) / 2, y: H - 6, fill: "var(--muted)", "font-size": 11, "text-anchor": "middle" }, svg)
+        .textContent = xLabel;
+      el("text", {
+        x: 12, y: (M.t + H - M.b) / 2, fill: "var(--muted)", "font-size": 11,
+        "text-anchor": "middle", transform: `rotate(-90 12 ${(M.t + H - M.b) / 2})`,
+      }, svg).textContent = yLabel;
+
+      for (const s of series) {
+        const color = DEVICE[s.key].hex;
+        const pts = s.points;
+        if (connect && pts.length > 1) {
+          el("path", {
+            d: pts.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(""),
+            fill: "none", stroke: color, "stroke-width": 2,
+            "stroke-linejoin": "round", "stroke-linecap": "round",
+          }, svg);
+        }
+        for (const p of pts) {
+          // marker with a surface ring; on trend charts the dots recede
+          // so the fitted line carries the story
+          el("circle", {
+            cx: sx(p.x), cy: sy(p.y), r: trend ? 3.5 : 4.5,
+            fill: color, stroke: SURFACE, "stroke-width": trend ? 1.5 : 2,
+            opacity: trend ? 0.5 : 1,
+          }, svg);
+          // enlarged hover target (~24px)
+          const hit = el("circle", { cx: sx(p.x), cy: sy(p.y), r: 12, fill: "transparent", cursor: "pointer" }, svg);
+          hit.addEventListener("mousemove", (e) => showTooltip(p.tip, e.clientX, e.clientY));
+          hit.addEventListener("mouseleave", hideTooltip);
+        }
+        if (trend) {
+          const fit = linearFit(pts);
+          if (fit) {
+            const x0 = Math.min(...pts.map((p) => p.x));
+            const x1 = Math.max(...pts.map((p) => p.x));
+            const clampY = (v) => Math.min(yT.hi, Math.max(yT.lo, v));
+            el("line", {
+              x1: sx(x0), y1: sy(clampY(fit.a + fit.b * x0)),
+              x2: sx(x1), y2: sy(clampY(fit.a + fit.b * x1)),
+              stroke: color, "stroke-width": 2, "stroke-linecap": "round",
+            }, svg);
+          }
+        }
+      }
+
+      container.appendChild(svg);
+    }
+
+    // ── Filters ─────────────────────────────────────────────────────────
+
+    let filterInput = "all";
+    let filterMode = "all";
+    let filterTol = "all";
+    let filterPlayer = "";
+    let excludeOutliers = true;
+    let avgMetric = "motion"; // 'session' | 'motion'
+    let avgStat = "mean";      // 'mean' | 'median'
+
+    for (const chip of document.querySelectorAll(".metric-toggle .chip")) {
+      chip.addEventListener("click", () => {
+        avgMetric = chip.dataset.metric;
+        for (const c of document.querySelectorAll(".metric-toggle .chip"))
+          c.classList.toggle("active", c === chip);
+        render();
+      });
+    }
+    for (const chip of document.querySelectorAll(".stat-toggle .chip")) {
+      chip.addEventListener("click", () => {
+        avgStat = chip.dataset.stat;
+        for (const c of document.querySelectorAll(".stat-toggle .chip"))
+          c.classList.toggle("active", c === chip);
+        render();
+      });
+    }
+
+    for (const chip of document.querySelectorAll("#filter-outliers .chip")) {
+      chip.addEventListener("click", () => {
+        excludeOutliers = chip.dataset.out === "drop";
+        for (const c of document.querySelectorAll("#filter-outliers .chip"))
+          c.classList.toggle("active", c === chip);
+        document.getElementById("outlier-note").classList.toggle("hidden", !excludeOutliers);
+        render();
+      });
+    }
+
+    for (const chip of document.querySelectorAll("#filter-input .chip")) {
+      chip.addEventListener("click", () => {
+        filterInput = chip.dataset.input;
+        for (const c of document.querySelectorAll("#filter-input .chip"))
+          c.classList.toggle("active", c === chip);
+        render();
+      });
+    }
+    for (const chip of document.querySelectorAll("#filter-mode .chip")) {
+      chip.addEventListener("click", () => {
+        filterMode = chip.dataset.mode;
+        for (const c of document.querySelectorAll("#filter-mode .chip"))
+          c.classList.toggle("active", c === chip);
+        render();
+      });
+    }
+    document.getElementById("player-filter").addEventListener("input", (e) => {
+      filterPlayer = e.target.value.trim().toLowerCase();
+      render();
+    });
+    for (const chip of document.querySelectorAll("#filter-tol .chip")) {
+      chip.addEventListener("click", () => {
+        filterTol = chip.dataset.tol;
+        for (const c of document.querySelectorAll("#filter-tol .chip"))
+          c.classList.toggle("active", c === chip);
+        render();
+      });
+    }
+
+    // ── Render ──────────────────────────────────────────────────────────
+
+    function render() {
+      const sessions = loadSessions()
+        .filter((s) => filterInput === "all" || s.input === filterInput)
+        .filter((s) => filterMode === "all" || s.mode === filterMode)
+        .filter((s) => filterTol === "all" || (s.tol ?? "normal") === filterTol)
+        .filter((s) => !filterPlayer || (s.name || "").trim().toLowerCase() === filterPlayer)
+        .sort((a, b) => a.ts - b.ts);
+
+      const motions = motionRows(sessions);
+
+      // outlier flags: independent at each level, per input × mode group
+      for (const s of sessions) s.outlier = false;
+      for (const m of motions) m.outlier = false;
+      if (excludeOutliers) {
+        // session totals are ~constant on timed runs; judge sessions by
+        // their median motion time instead
+        flagOutliers(sessions.filter((s) => s.motions.length),
+          (s) => s.input + "|" + s.mode + "|" + (s.tol ?? "normal") + "|" + (s.limit ?? 0),
+          (s) => {
+            const t = s.motions.map((m) => m.ms).sort((a, b) => a - b);
+            return t[t.length >> 1];
+          });
+        flagOutliers(motions, (m) => m.session.input + "|" + m.session.mode + "|" + (m.session.tol ?? "normal") + "|" + (m.session.limit ?? 0), (m) => m.timeS);
+      }
+      const keptSessions = sessions.filter((s) => !s.outlier);
+      const keptMotions = motions.filter((m) => !m.outlier);
+      const exclS = sessions.length - keptSessions.length;
+      const exclM = motions.length - keptMotions.length;
+
+      // -- stat tiles (computed on kept data; motion-first — session
+      //    totals aren't comparable once timed runs are in the mix)
+      const motionTimes = keptMotions.map((m) => m.timeS);
+      const tiles = [
+        {
+          label: "Sessions",
+          value: String(keptSessions.length),
+          sub: exclS ? `${exclS} excluded as outliers` : "",
+        },
+        {
+          label: "Matches",
+          value: String(keptMotions.length),
+          sub: exclM ? `${exclM} excluded as outliers` : "",
+        },
+        { label: "Best motion", value: motionTimes.length ? Math.min(...motionTimes).toFixed(1) + "s" : "—" },
+        { label: "Median motion", value: motionTimes.length ? median(motionTimes).toFixed(1) + "s" : "—" },
+        {
+          label: "Mean motion time",
+          value: motionTimes.length ? (motionTimes.reduce((a, b) => a + b, 0) / motionTimes.length).toFixed(1) + "s" : "—",
+        },
+      ];
+      document.getElementById("tiles").innerHTML = tiles.map((t) => `
+        <div class="tile">
+          <div class="label">${t.label}</div>
+          <div class="value">${t.value}</div>
+          ${t.sub ? `<div class="sub">${t.sub}</div>` : ""}
+        </div>`).join("");
+
+      // -- shared: group by input, colors follow the entity
+      const inputs = ["mouse", "mouse-holroyd", "spacemouse", "rotatrix"];
+
+      // -- averages by input, grouped per mode (each mode has its own
+      //    fastest baseline — rot and 6dof times aren't comparable).
+      //    Metric toggle: mean session total or mean per-motion time.
+      const avgEl = document.getElementById("chart-avg");
+      const unit = avgMetric === "session" ? "session" : "motion";
+      const statOf = (r) => (avgStat === "mean" ? r.mean : r.med);
+      document.getElementById("avg-title").textContent =
+        `${avgStat === "mean" ? "Mean" : "Median"} ${avgMetric} time by input (shorter is better)`;
+      document.getElementById("avg-sub").textContent =
+        `${avgStat} ${avgMetric === "session" ? "total time" : "time per match"}` +
+        "; % is relative to the fastest input within the same mode";
+
+      const metricVals = (key, mode) => avgMetric === "session"
+        // timed sessions have a fixed total, so they only make sense in
+        // per-motion terms — drop them from session-total aggregates
+        ? keptSessions.filter((s) => s.input === key && s.mode === mode && !s.limit).map((s) => s.total)
+        : keptMotions
+            .filter((m) => m.session.input === key && m.session.mode === mode)
+            .map((m) => m.timeS * 1000);
+
+      const modeGroups = (filterMode === "all" ? ["rot", "trans", "6dof"] : [filterMode])
+        .map((mode) => {
+          const rows = inputs.map((key) => {
+            const vals = metricVals(key, mode);
+            if (!vals.length) return null;
+            return {
+              key,
+              n: vals.length,
+              mean: vals.reduce((a, b) => a + b, 0) / vals.length,
+              med: median(vals),
+              best: Math.min(...vals),
+            };
+          }).filter(Boolean).sort((a, b) => statOf(a) - statOf(b));
+          return { mode, rows };
+        })
+        .filter((g) => g.rows.length);
+
+      if (!modeGroups.length) {
+        avgEl.innerHTML = '<div class="empty">no data for this filter yet</div>';
+      } else {
+        avgEl.innerHTML = modeGroups.map((g) => {
+          const fastest = g.rows[0];
+          const maxVal = Math.max(...g.rows.map(statOf));
+          return `<div class="avg-group">
+            ${modeGroups.length > 1 ? `<div class="avg-group-title">${MODE_TITLE[g.mode]}</div>` : ""}
+            ${g.rows.map((r) => {
+              const pct = Math.round((statOf(r) / statOf(fastest) - 1) * 100);
+              const delta = r === fastest
+                ? '<span class="avg-delta fastest">fastest</span>'
+                : `<span class="avg-delta">+${pct}% vs ${DEVICE[fastest.key].label}</span>`;
+              return `<div class="avg-row" data-tip="${r.n} ${unit}${r.n === 1 ? "" : "s"} · mean ${fmtTotal(r.mean)} · median ${fmtTotal(r.med)} · best ${fmtTotal(r.best)}">
+                <div class="avg-label"><span class="dot" style="background:${DEVICE[r.key].hex}"></span>${DEVICE[r.key].label} <span class="n">&times;${r.n}</span></div>
+                <div class="avg-track"><div class="avg-bar" style="width:${(statOf(r) / maxVal * 100).toFixed(1)}%;background:${DEVICE[r.key].hex}"></div></div>
+                <div class="avg-value">${fmtTotal(statOf(r))}${delta}</div>
+              </div>`;
+            }).join("")}
+          </div>`;
+        }).join("");
+
+        for (const row of avgEl.querySelectorAll(".avg-row")) {
+          row.addEventListener("mousemove", (e) => showTooltip(row.dataset.tip, e.clientX, e.clientY));
+          row.addEventListener("mouseleave", hideTooltip);
+        }
+      }
+
+      const tipHead = (s) =>
+        `<span class="t-title">${DEVICE[s.input].label} · ${MODE_LABEL[s.mode]}</span><br>${fmtDate(s.ts)}`;
+
+      // learning curves: one chart per mode (totals aren't comparable
+      // across modes), attempt index within each input × mode group
+      for (const mode of ["rot", "trans", "6dof"]) {
+        const card = document.getElementById(`card-learning-${mode}`);
+        const show = filterMode === "all" || filterMode === mode;
+        card.classList.toggle("hidden", !show);
+        if (!show) continue;
+        renderChart(document.getElementById(`chart-learning-${mode}`), {
+          connect: true,
+          xLabel: "attempt #",
+          yLabel: "median motion time (s)",
+          height: 240,
+          series: inputs.map((key) => ({
+            key,
+            // attempt # counts all sessions; excluded outliers leave gaps.
+            // median per-motion time keeps timed and free-play sessions on
+            // one comparable axis
+            points: sessions
+              .filter((s) => s.input === key && s.mode === mode)
+              .map((s, i) => ({ s, i }))
+              .filter(({ s }) => !s.outlier && s.motions.length)
+              .map(({ s, i }) => ({
+                x: i + 1,
+                y: median(s.motions.map((m) => m.ms)) / 1000,
+                tip: `${tipHead(s)}<br>median motion ${fmtTotal(median(s.motions.map((m) => m.ms)))} · ${s.motions.length} pose${s.motions.length === 1 ? "" : "s"}${s.limit ? ` · ${s.limit}s timed` : ""}`,
+              })),
+          })),
+        });
+      }
+
+      // each scatter only makes sense for modes exercising its axis family
+      document.getElementById("card-scatter-rot").classList.toggle(
+        "hidden", !(filterMode === "all" || HAS_ROTATION.has(filterMode)));
+      document.getElementById("card-scatter-trans").classList.toggle(
+        "hidden", !(filterMode === "all" || HAS_TRANSLATION.has(filterMode)));
+
+      renderChart(document.getElementById("chart-rot"), {
+        xLabel: "rotation to cover (°)",
+        yLabel: "motion time (s)",
+        trend: true,
+        series: inputs.map((key) => ({
+          key,
+          points: motions
+            .filter((m) => m.session.input === key && HAS_ROTATION.has(m.session.mode) && !m.outlier)
+            .map((m) => ({
+            x: m.angleDeg,
+            y: m.timeS,
+            tip: `${tipHead(m.session)}<br>match ${m.poseIndex}: ${m.timeS.toFixed(1)}s · ${m.angleDeg.toFixed(0)}° · ${m.dist.toFixed(2)}u`,
+          })),
+        })),
+      });
+
+      renderChart(document.getElementById("chart-trans"), {
+        xLabel: "translation to cover (u)",
+        yLabel: "motion time (s)",
+        trend: true,
+        series: inputs.map((key) => ({
+          key,
+          points: motions
+            .filter((m) => m.session.input === key && HAS_TRANSLATION.has(m.session.mode) && !m.outlier)
+            .map((m) => ({
+              x: m.dist,
+              y: m.timeS,
+              tip: `${tipHead(m.session)}<br>match ${m.poseIndex}: ${m.timeS.toFixed(1)}s · ${m.dist.toFixed(2)}u · ${m.angleDeg.toFixed(0)}°`,
+            })),
+        })),
+      });
+
+      // -- sessions table (newest first)
+      const rows = [...sessions].reverse().map((s) => {
+        const times = (s.motions ?? []).map((m) => m.ms);
+        const mean = times.length ? times.reduce((a, b) => a + b, 0) / times.length : NaN;
+        return `<tr${s.outlier ? ' class="outlier-row"' : ""}>
+          <td>${fmtDate(s.ts)}${s.outlier ? ' <span class="out-badge">outlier</span>' : ""}</td>
+          <td>${s.name || "—"}</td>
+          <td><span class="dot" style="background:${DEVICE[s.input]?.hex ?? "#666"}"></span>${DEVICE[s.input]?.label ?? s.input}</td>
+          <td>${MODE_LABEL[s.mode] ?? s.mode} · ${s.tol ?? "normal"}${s.limit ? ` · ${s.limit}s` : ""}</td>
+          <td class="num">${s.motions.length}</td>
+          <td class="num">${s.limit
+            ? (times.length ? fmtTotal(times.reduce((a, b) => a + b, 0)) : "—")
+            : fmtTotal(s.total)}</td>
+          <td class="num">${isFinite(mean) ? fmtTotal(mean) : "—"}</td>
+          <td class="num">${times.length ? fmtTotal(Math.min(...times)) : "—"}</td>
+          <td class="num">${times.length ? fmtTotal(Math.max(...times)) : "—"}</td>
+        </tr>`;
+      });
+      document.getElementById("sessions-table").innerHTML = sessions.length
+        ? `<thead><tr>
+             <th>When</th><th>Player</th><th>Input</th><th>Mode</th>
+             <th class="num">Matches</th><th class="num">Active</th><th class="num">Mean motion</th>
+             <th class="num">Fastest</th><th class="num">Slowest</th>
+           </tr></thead><tbody>${rows.join("")}</tbody>`
+        : "";
+      document.getElementById("table-sub").textContent = sessions.length
+        ? `${sessions.length} session${sessions.length === 1 ? "" : "s"} (newest first)`
+        : "no sessions recorded yet — play a few rounds first";
+    }
+
+    // ── Actions ─────────────────────────────────────────────────────────
+
+    document.getElementById("btn-export").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(loadSessions(), null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "pose-match-sessions.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    // import merges with existing data, deduped by timestamp — safe to
+    // re-import the same export or combine exports from other origins
+    const importFile = document.getElementById("import-file");
+    document.getElementById("btn-import").addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", async () => {
+      const file = importFile.files[0];
+      importFile.value = "";
+      if (!file) return;
+      try {
+        const imported = JSON.parse(await file.text());
+        if (!Array.isArray(imported)) throw new Error("expected a session array");
+        const existing = loadSessions();
+        const seen = new Set(existing.map((s) => s.ts));
+        const fresh = imported.filter(
+          (s) => s && typeof s.ts === "number" && s.input && s.mode && !seen.has(s.ts));
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify([...existing, ...fresh]));
+        // the leaderboard is a projection of the sessions — rebuild it so
+        // imported timed sessions appear on the boards (names preserved)
+        rebuildLeaderboard();
+        render(); // render first — it rewrites the table subtitle
+        document.getElementById("table-sub").textContent =
+          `imported ${fresh.length} new session${fresh.length === 1 ? "" : "s"} (${imported.length - fresh.length} duplicates skipped)`;
+      } catch (err) {
+        document.getElementById("table-sub").textContent = `import failed: ${err.message}`;
+      }
+    });
+
+    const btnClear = document.getElementById("btn-clear");
+    let clearArmed = false;
+    btnClear.addEventListener("click", () => {
+      if (!clearArmed) {
+        clearArmed = true;
+        btnClear.textContent = "really delete all sessions?";
+        btnClear.classList.add("danger-armed");
+        setTimeout(() => {
+          clearArmed = false;
+          btnClear.textContent = "clear all data";
+          btnClear.classList.remove("danger-armed");
+        }, 3000);
+        return;
+      }
+      localStorage.removeItem(SESSIONS_KEY);
+      rebuildLeaderboard(); // no sessions → empty board
+      clearArmed = false;
+      btnClear.textContent = "clear all data";
+      btnClear.classList.remove("danger-armed");
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

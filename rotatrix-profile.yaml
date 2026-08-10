@@ -1,0 +1,51 @@
+# Rotatrix profile for Teapot Showdown.
+#
+# The game publishes the OpenAxis tag app.teapot_showdown (plus object,
+# translate, lefthand), which activates this profile.
+#
+# To add it: merge the profile below into your user config at
+#   macOS:    ~/Library/Application Support/rotatrix/config.yaml
+#   Windows:  %APPDATA%/rotatrix/config.yaml
+# under the top-level `profiles:` key, and add `teapot_showdown` to
+# `profile_order`.
+#
+# Tags: `object` turns the ball into the teapot's rotation; `translate`
+# is pinned by the game in translation-only mode (btn:2 or shift give a
+# momentary hold otherwise); `lefthand` mirrors the zoom axis when the
+# game's left-hand setting is on.
+
+profiles:
+  teapot_showdown:
+    description: >-
+      Teapot Showdown — the game publishes tag:app.teapot_showdown plus
+      object / translate / lefthand to select behavior.
+    triggers: ["tag:app.teapot_showdown"]
+    ball_mode: mouse
+    bindings:
+      - name: Object
+        triggers: ["tag:object"]
+        ball_mode: rotatrix
+        navigation_mode: object
+        axis_map: obj_rotate
+        # override axis dominance to off for each axis map
+        # for simultaneous 3 axis control in all modes
+        axis_dominance: off
+        label: Rotate
+        bindings:
+          - name: Translate
+            triggers:
+              - btn:2
+              - key:shift
+              - tag:translate
+            axis_map: obj_translate
+            axis_dominance: off
+            bindings:
+              # lefthand tag (the game's left-hand setting): mirrored zoom
+              - name: Translate (lefthand)
+                triggers:
+                  - tag:lefthand
+                axis_map: obj_translate_lefthand
+                axis_dominance: off
+            label:
+              text: Translate
+              mode: replace

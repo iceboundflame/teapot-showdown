@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Teapot Showdown</title>
+  <link rel="stylesheet" href="./pose-match.css" />
+</head>
+<body>
+  <div class="hud">
+    <span class="timer" id="timer">0:00.0</span>
+    <span class="pose-count" id="pose-count">&ndash;</span>
+    <span class="delta" id="delta"></span>
+  </div>
+
+  <div class="status">
+    <span class="pill hidden" id="pill-input"></span>
+  </div>
+
+  <div class="overlay" id="overlay-start">
+    <div class="side-panel side-left hidden" id="start-bars"></div>
+    <div class="overlay-center">
+    <h1>Teapot Showdown</h1>
+    <p>Match the solid teapot to the ghost as many times as you can before
+       the clock runs out. Hold each match briefly to lock it in.</p>
+    <button class="about-link" data-modal="about">what is this game?</button>
+    <div class="mode-choice">
+      <button data-mode="rot">Rotation only</button>
+      <button data-mode="trans">Translation only</button>
+      <button data-mode="6dof">Rotation + translation</button>
+    </div>
+    <div class="input-choice">
+      <div class="input-opt">
+        <button data-input="mouse"><span class="dot" style="background:#c98500"></span><span class="input-label">Mouse</span></button>
+      </div>
+      <div class="input-opt opt-spacemouse">
+        <button data-input="spacemouse"><span class="dot" style="background:#3987e5"></span>SpaceMouse</button>
+        <button class="setup-link" data-setup="spacemouse">setup</button>
+      </div>
+      <div class="input-opt opt-rotatrix">
+        <button data-input="rotatrix"><span class="dot" style="background:#e66767"></span>Rotatrix</button>
+        <div class="opt-links">
+          <button class="setup-link" data-setup="rotatrix">setup</button>
+          <a class="setup-link get-link" href="https://rotatrix.com/?utm_source=teapot_showdown" target="_blank" rel="noopener">get one &#x2197;</a>
+        </div>
+      </div>
+    </div>
+    <div class="mobile-chips">
+      <button data-modal="options">options</button>
+      <button data-modal="scores">scores</button>
+      <button data-modal="stats">stats</button>
+    </div>
+    <div class="settings">
+      <div class="set-head">Game options</div>
+      <div class="mode-choice tol-choice">
+        <span class="row-label">tolerance</span>
+        <button data-tol="precise">Precise</button>
+        <button data-tol="normal">Normal</button>
+        <button data-tol="loose">Loose</button>
+      </div>
+      <div class="mode-choice tol-choice">
+        <span class="row-label">time limit</span>
+        <button data-limit="20">20s</button>
+        <button data-limit="30">30s</button>
+        <button data-limit="45">45s</button>
+        <button data-limit="60">60s</button>
+      </div>
+      <div class="set-head">Mouse options</div>
+      <div class="mode-choice tol-choice" id="row-mouserot">
+        <span class="row-label">rotation</span>
+        <button data-mouserot="trackball">Virtual trackball</button>
+        <button data-mouserot="tumbler">Tumbler</button>
+      </div>
+      <label class="set-check"><input type="checkbox" id="chk-revwheel" />reverse scroll wheel</label>
+      <div class="set-head">SpaceMouse options</div>
+      <label class="set-check"><input type="checkbox" id="chk-invert" />invert motion</label>
+      <div class="set-head">Rotatrix options</div>
+      <label class="set-check"><input type="checkbox" id="chk-lefthand" />left-hand mode (reverse depth translation)</label>
+      <div class="set-head">Booth options</div>
+      <label class="set-check"><input type="checkbox" id="chk-booth" />booth mode (name entry + staff claim chips)</label>
+      <div id="booth-extras">
+        <div class="mode-choice tol-choice">
+          <span class="row-label">staff</span>
+          <input type="text" id="staff-names" placeholder="comma-separated — one-tap claim buttons after each run" />
+        </div>
+        <div class="mode-choice tol-choice">
+          <span class="row-label">hide names</span>
+          <input type="text" id="lb-exclude" placeholder="comma-separated, hidden from leaderboards" />
+        </div>
+      </div>
+      <label class="set-check"><input type="checkbox" id="chk-attract" />attract mode (idle animation)</label>
+      <button class="set-defaults" id="btn-defaults">reset to defaults</button>
+    </div>
+    <p class="sdk-note hidden" id="sdk-note">
+      SpaceMouse input needs the 3DconnexionJS script, which couldn't be loaded
+      from 3dconnexion.com. Check your internet connection, and make sure the
+      3DxWare driver is installed.
+    </p>
+    </div>
+    <div class="side-panel side-right hidden" id="start-board">
+      <div class="lb-title" id="start-board-title"></div>
+      <div class="lb-sub" id="start-board-sub"></div>
+      <table class="lb-board" id="start-board-table"></table>
+      <div class="lb-range" id="lb-range">
+        <button data-range="today">today</button>
+        <button data-range="all">all time</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="overlay-results">
+    <div class="side-panel side-left hidden" id="result-bars"></div>
+    <div class="overlay-center">
+      <h1>Finished!</h1>
+      <div class="total" id="total"></div>
+      <div class="lb-claim hidden" id="lb-claim"></div>
+      <div class="lb-entry hidden" id="lb-entry">
+        <input type="text" id="lb-name" maxlength="8" placeholder="name (8 chars)" autocomplete="off" />
+        <button id="lb-save">save score</button>
+      </div>
+      <div class="cta">Click to play again</div>
+    </div>
+    <div class="side-panel side-right lb-wrap hidden" id="lb-wrap">
+      <div class="lb-col">
+        <div class="lb-title" id="lb-title"></div>
+        <div class="lb-sub" id="lb-sub"></div>
+        <table class="lb-board" id="lb-board"></table>
+      </div>
+      <div class="lb-col">
+        <div class="lb-title" id="lb-title-all"></div>
+        <div class="lb-sub" id="lb-sub-all"></div>
+        <table class="lb-board" id="lb-board-all"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-about">
+    <div class="overlay-center setup-panel">
+      <h1>Teapot Showdown</h1>
+      <p>A hand&ndash;eye challenge for 3D input devices: how quickly can you
+         move and rotate an object onto a target? Every match is one full
+         6&ndash;degree&ndash;of&ndash;freedom alignment &mdash; the bread and
+         butter of CAD, 3D modeling, and scene layout work.</p>
+      <h2>Why it exists</h2>
+      <p>The game doubles as a benchmark for comparing input devices on equal
+         terms: a regular mouse, a 3Dconnexion SpaceMouse, a touchscreen, and
+         the <a href="https://rotatrix.com/?utm_source=teapot_showdown" target="_blank" rel="noopener">Rotatrix</a>
+         trackball all play the same poses. Each run records how long every
+         single match took, and the <a href="stats.html">stats page</a> compares
+         median motion times per device &mdash; so the argument about which
+         device is faster can be settled with your own data.</p>
+      <h2>How to play</h2>
+      <ol>
+        <li>Pick a mode: rotation only, translation only, or both.</li>
+        <li>Line the solid teapot up with the ghost; hold it inside the
+            tolerance briefly to lock the match.</li>
+        <li>The ghost jumps to a new pose &mdash; repeat until the clock runs
+            out. More matches wins; ties break on speed.</li>
+      </ol>
+      <p>Everything is stored locally in your browser &mdash; nothing leaves
+         your device.</p>
+      <button class="set-defaults setup-close" data-modal="about">close</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-setup">
+    <div class="overlay-center setup-panel">
+      <div class="setup-section" data-setup-section="spacemouse">
+        <h2><span class="dot" style="background:#3987e5"></span>SpaceMouse</h2>
+        <ol>
+          <li>Plug in your SpaceMouse.</li>
+          <li>Install the 3Dconnexion 3DxWare driver and make sure the
+              <code>3DxNLServer</code> service is running (it starts with the
+              driver).</li>
+          <li>Pick <b>SpaceMouse</b> on the start screen and allow the page
+              access to local devices when the browser asks.</li>
+        </ol>
+      </div>
+      <div class="setup-section" data-setup-section="rotatrix">
+        <h2><span class="dot" style="background:#e66767"></span>Rotatrix</h2>
+        <p>Don&rsquo;t have one? Get a Rotatrix at
+           <a href="https://rotatrix.com/?utm_source=teapot_showdown" target="_blank" rel="noopener">rotatrix.com</a>.</p>
+        <ol>
+          <li>Run the Rotatrix app.</li>
+          <li>Under <b>Integrations</b>, enable <b>Local HTTPS support</b>
+              (required when playing the hosted https version of this game).</li>
+          <li>Create a new profile named <code>teapot_showdown</code>, click
+              <b>Edit as YAML</b>, and paste the profile below.</li>
+        </ol>
+        <div class="yaml-box">
+          <textarea id="setup-yaml" readonly spellcheck="false"></textarea>
+          <button id="btn-copy-yaml">copy</button>
+        </div>
+      </div>
+      <button class="set-defaults setup-close" data-modal="setup">close</button>
+    </div>
+  </div>
+
+  <button class="panel-close" id="panel-close">&#x2715;</button>
+
+  <div class="touch-controls" aria-hidden="true">
+    <button id="tc-exit">&#x2715;</button>
+    <button id="tc-reset">&#x27F2; reset</button>
+    <button id="tc-peek">&#x1F441; peek</button>
+  </div>
+
+  <div class="hint" id="hint">drag: rotate &middot; shift/right-drag: pan &middot; wheel: depth &middot; space: peek at target &middot; R: reset teapot &middot; Esc: cancel</div>
+
+  <div class="attract-invite" aria-hidden="true">
+    <div class="attract-name">Play Teapot Showdown!</div>
+    <div class="attract-cta">Match the ghost teapot. Beat the clock.</div>
+  </div>
+
+  <script>
+    TRACE_MESSAGES = false;
+
+    // 3DconnexionJS is not redistributed, so it's loaded from
+    // 3dconnexion.com. If it can't be reached, the SpaceMouse option
+    // reports "SDK not loaded" and the other inputs work normally.
+    window._3dxReady = new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = "https://3dconnexion.com/technical_support/3dconnexion.min.js";
+      s.onload = () => resolve(true);
+      s.onerror = () => { s.remove(); resolve(false); };
+      document.head.appendChild(s);
+    });
+  </script>
+
+  <script type="module" src="./pose-match/main.js"></script>
+</body>
+</html>

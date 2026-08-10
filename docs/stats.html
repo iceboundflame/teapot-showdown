@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teapot Showdown — Stats</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --s-mouse: #c98500;
+      --s-holroyd: #199e70;
+      --s-spacemouse: #3987e5;
+      --s-rotatrix: #e66767;
+    }
+    body {
+      background: var(--page);
+      color: var(--ink-2);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 32px 24px 60px;
+    }
+    .wrap { max-width: 1060px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    header h1 { font-size: 22px; font-weight: 700; color: var(--ink); }
+    header a { color: var(--muted); font-size: 13px; text-decoration: none; }
+    header a:hover { color: var(--ink); }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .filters .group { display: flex; gap: 6px; align-items: center; }
+    .filters .group-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 5px 12px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: rgba(255, 255, 255, 0.3); }
+    .chip.active { background: rgba(255, 255, 255, 0.10); color: var(--ink); }
+    .chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    #player-filter {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 5px 12px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 600;
+      width: 110px;
+    }
+    #player-filter:focus { outline: none; border-color: rgba(255, 255, 255, 0.35); }
+
+    .footnote {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin: -10px 0 18px;
+      max-width: 720px;
+      line-height: 1.5;
+    }
+    .hidden { display: none !important; }
+
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .tile .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .tile .value { font-size: 26px; font-weight: 600; color: var(--ink); }
+    .tile .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 16px 10px;
+    }
+    .card.full { grid-column: 1 / -1; }
+    .card h2 { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+    .card .sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .card svg { display: block; width: 100%; height: auto; }
+    .card .empty {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding: 60px 0;
+    }
+    @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .toggles { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+    .metric-toggle, .stat-toggle { display: flex; gap: 6px; }
+
+    .avg-group { margin-bottom: 14px; }
+    .avg-group:last-child { margin-bottom: 4px; }
+    .avg-group-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .avg-row {
+      display: grid;
+      grid-template-columns: 190px 1fr 210px;
+      align-items: center;
+      gap: 12px;
+      padding: 3px 0;
+    }
+    .avg-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    .avg-label .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .avg-label .n { color: var(--muted); font-size: 11px; }
+    .avg-track { height: 18px; position: relative; }
+    .avg-bar {
+      height: 100%;
+      border-radius: 0 4px 4px 0; /* rounded data end, square at baseline */
+      min-width: 2px;
+    }
+    .avg-value {
+      font-size: 13px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .avg-value .avg-delta { color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .avg-value .avg-delta.fastest { color: #0ca30c; }
+    @media (max-width: 760px) {
+      .avg-row { grid-template-columns: 150px 1fr 170px; gap: 8px; }
+    }
+
+    .table-card { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--baseline);
+    }
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--grid);
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    td.num, th.num { text-align: right; }
+    tr:last-child td { border-bottom: none; }
+    td .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
+    tr.outlier-row td { opacity: 0.45; }
+    .out-badge {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+    .actions button {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 16px;
+      color: var(--ink-2);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .actions button:hover { color: var(--ink); border-color: rgba(255, 255, 255, 0.35); }
+    .actions button.danger-armed { color: #e66767; border-color: #e66767; }
+
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: #262624;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color: var(--ink-2);
+      z-index: 10;
+      display: none;
+      max-width: 240px;
+      line-height: 1.5;
+    }
+    #tooltip .t-title { color: var(--ink); font-weight: 600; }
+  </style>
+  <script type="module" crossorigin src="./assets/stats-DCoRutv0.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/pose-match-shared-Bu_67_Xk.js">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Teapot Showdown — Stats</h1>
+      <a href="./">&larr; back to game</a>
+    </header>
+
+    <div class="filters" id="filters">
+      <div class="group" id="filter-input">
+        <span class="group-label">Input</span>
+        <button class="chip active" data-input="all">All</button>
+        <button class="chip" data-input="mouse"><span class="dot" style="background:var(--s-mouse)"></span>Mouse</button>
+        <button class="chip" data-input="mouse-holroyd"><span class="dot" style="background:var(--s-holroyd)"></span>Mouse&nbsp;(Virtual&nbsp;Trackball)</button>
+        <button class="chip" data-input="spacemouse"><span class="dot" style="background:var(--s-spacemouse)"></span>SpaceMouse</button>
+        <button class="chip" data-input="rotatrix"><span class="dot" style="background:var(--s-rotatrix)"></span>Rotatrix</button>
+      </div>
+      <div class="group" id="filter-mode">
+        <span class="group-label">Mode</span>
+        <button class="chip active" data-mode="all">All</button>
+        <button class="chip" data-mode="rot">Rotation only</button>
+        <button class="chip" data-mode="trans">Translation only</button>
+        <button class="chip" data-mode="6dof">Rotation + translation</button>
+      </div>
+      <div class="group" id="filter-tol">
+        <span class="group-label">Tolerance</span>
+        <button class="chip active" data-tol="all">All</button>
+        <button class="chip" data-tol="precise">Precise</button>
+        <button class="chip" data-tol="normal">Normal</button>
+        <button class="chip" data-tol="loose">Loose</button>
+      </div>
+      <div class="group" id="filter-player">
+        <span class="group-label">Player</span>
+        <input type="text" id="player-filter" placeholder="all" maxlength="8" />
+      </div>
+      <div class="group" id="filter-outliers">
+        <span class="group-label">Outliers</span>
+        <button class="chip" data-out="keep">Include</button>
+        <button class="chip active" data-out="drop">Exclude</button>
+      </div>
+    </div>
+    <div class="footnote" id="outlier-note">
+      Outlier rule: Tukey fences at 1.5&times;IQR on log time, computed separately for
+      per-session median motion times and individual motion times within each
+      input &times; mode group (needs &ge;5 samples per group). Excluded points are hidden from charts but remain in the
+      sessions table, badged.
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <div>
+            <h2 id="avg-title">Average session time by input (shorter is better)</h2>
+            <div class="sub" id="avg-sub">mean total time; % is relative to the fastest input within the same mode</div>
+          </div>
+          <div class="toggles">
+            <div class="metric-toggle">
+              <button class="chip" data-metric="session">Session total</button>
+              <button class="chip active" data-metric="motion">Motion time</button>
+            </div>
+            <div class="stat-toggle">
+              <button class="chip active" data-stat="mean">Mean</button>
+              <button class="chip" data-stat="median">Median</button>
+            </div>
+          </div>
+        </div>
+        <div id="chart-avg"></div>
+      </div>
+      <div class="card" id="card-learning-rot">
+        <h2>Motion time by attempt — rotation only</h2>
+        <div class="sub">median time per match per session, in order played — one line per input</div>
+        <div id="chart-learning-rot"></div>
+      </div>
+      <div class="card" id="card-learning-trans">
+        <h2>Motion time by attempt — translation only</h2>
+        <div class="sub">median time per match per session, in order played — one line per input</div>
+        <div id="chart-learning-trans"></div>
+      </div>
+      <div class="card" id="card-learning-6dof">
+        <h2>Motion time by attempt — rotation + translation</h2>
+        <div class="sub">median time per match per session, in order played — one line per input</div>
+        <div id="chart-learning-6dof"></div>
+      </div>
+      <div class="card" id="card-scatter-rot">
+        <h2>Motion time vs rotation</h2>
+        <div class="sub">modes with rotation; each dot is one match; x = rotation to cover</div>
+        <div id="chart-rot"></div>
+      </div>
+      <div class="card" id="card-scatter-trans">
+        <h2>Motion time vs translation</h2>
+        <div class="sub">modes with translation; each dot is one match; x = distance to cover</div>
+        <div id="chart-trans"></div>
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <h2>Sessions</h2>
+      <div class="sub" id="table-sub"></div>
+      <table id="sessions-table"></table>
+    </div>
+
+    <div class="actions">
+      <button id="btn-export">export JSON</button>
+      <button id="btn-import">import JSON</button>
+      <button id="btn-clear">clear all data</button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+
+</body>
+</html>
